@@ -14,7 +14,7 @@ const categoryList = async (_) => {
       const $ = cheerio.load(html);
       let categories = [];
       $("#header2nd div ul li").each((_, elem) => {
-        let category = $(elem).find("a").attr('href');
+        let category = $(elem).find("a").attr("href");
         categories.push(category.substring(category.lastIndexOf("/") + 1));
       });
       return categories;
@@ -180,14 +180,16 @@ app.get("/", async (_, res) => {
     endpoints: {
       bargain: {
         method: "GET",
-        url: "/bargain"
+        url: "/bargain",
+        usage: "/bargain/:id",
       },
       category: {
         method: "GET",
         url: "/category",
+        usage: "/category/:category_name?page=:page",
         categories: categories,
       },
-    }
+    },
   });
 });
 
