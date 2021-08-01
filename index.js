@@ -7,14 +7,22 @@ const PORT = process.env.PORT || 5000;
 
 app.use(express.json());
 
-app.get("/", (_, res) => {
-  res.send("Hello World!");
-});
+const categoryList = async (_) => {
+  return await fetch("https://www.ozbargain.com.au")
+    .then((response) => response.text())
+    .then((html) => {
+      const $ = cheerio.load(html);
+      let categories = [];
+      $("#header2nd div ul li").each((_, elem) => {
+        let category = $(elem).find("a").attr('href');
+        categories.push(category.substring(category.lastIndexOf("/") + 1));
+      });
+      return categories;
+    });
+};
 
 const productData = async (node_id) => {
-  return await fetch(
-    `https://www.ozbargain.com.au/node/${node_id}`
-  )
+  return await fetch(`https://www.ozbargain.com.au/node/${node_id}`)
     .then((response) => response.text())
     .then((html) => {
       const $ = cheerio.load(html);
@@ -48,9 +56,9 @@ const productData = async (node_id) => {
 
       // Getting product information
       const referrer = $("span.via > a").text();
-      const product_link = `https://www.ozbargain.com.au${$("span.via > a").attr(
-        "href"
-      )}`;
+      const product_link = `https://www.ozbargain.com.au${$(
+        "span.via > a"
+      ).attr("href")}`;
 
       // Getting user information
       const username = $(".node-ozbdeal .submitted > strong > a").text();
@@ -84,7 +92,7 @@ const productData = async (node_id) => {
 };
 
 const categoryData = async (category_name, page) => {
-  const base_url = `https://www.ozbargain.com.au/cat/${category_name}`
+  const base_url = `https://www.ozbargain.com.au/cat/${category_name}`;
   let url = parseInt(page) ? `${base_url}?page=${page}` : base_url;
 
   return await fetch(url)
@@ -92,10 +100,14 @@ const categoryData = async (category_name, page) => {
     .then((html) => {
       const $ = cheerio.load(html);
       const bargains = [];
-      const next_page = $(".main .pager .pager-next").attr('href')
-      const previous_page = $(".main .pager .pager-previous").attr('href')
-      const next_page_num = next_page ? next_page.substring(next_page.lastIndexOf("=") + 1) : null;
-      const previous_page_num = previous_page ? previous_page.substring(previous_page.lastIndexOf("=") + 1) : null;
+      const next_page = $(".main .pager .pager-next").attr("href");
+      const previous_page = $(".main .pager .pager-previous").attr("href");
+      const next_page_num = next_page
+        ? next_page.substring(next_page.lastIndexOf("=") + 1)
+        : null;
+      const previous_page_num = previous_page
+        ? previous_page.substring(previous_page.lastIndexOf("=") + 1)
+        : null;
 
       $(".node-ozbdeal").each((_, elem) => {
         const title = $(elem).find(".title").text();
@@ -158,10 +170,26 @@ const categoryData = async (category_name, page) => {
       }
 
       return JSON.stringify(data);
-      
     })
     .catch((err) => err);
 };
+
+app.get("/", async (_, res) => {
+  let categories = await categoryList();
+  res.json({
+    endpoints: {
+      bargain: {
+        method: "GET",
+        url: "/bargain"
+      },
+      category: {
+        method: "GET",
+        url: "/category",
+        categories: categories,
+      },
+    }
+  });
+});
 
 // GET bargain details
 app.get("/bargain/:id", async (req, res) => {
