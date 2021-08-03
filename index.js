@@ -92,10 +92,9 @@ const productData = async (node_id) => {
     .catch((err) => err);
 };
 
-const categoryData = async (category_name, page) => {
+const categoryData = async (category_name, page, show_expired) => {
   const base_url = `https://www.ozbargain.com.au/cat/${category_name}`;
   let url = parseInt(page) ? `${base_url}?page=${page}` : base_url;
-
   return await fetch(url)
     .then((response) => response.text())
     .then((html) => {
@@ -114,7 +113,7 @@ const categoryData = async (category_name, page) => {
         const title = $(elem).find(".title").text();
         const description = $(elem).find(".content > p").text();
         const expired = $(elem).find(".expired").text() ? true : false;
-        const price = $(elem).find(".dollar").first().text();
+        const price = parseInt($(elem).find(".dollar").first().text().substring(1));
         const submitted = $(elem).find(".submitted").text();
         const upvotes = $(elem).find(".n-vote > .voteup").text();
         const downvotes = $(elem).find(".n-vote > .votedown").text();
@@ -135,27 +134,32 @@ const categoryData = async (category_name, page) => {
           .find(".submitted > strong > a")
           .attr("href")}`;
 
-        bargains.push({
-          title: title,
-          description: description,
-          price: price,
-          item_code: item_code,
-          expired: expired,
-          post_information: {
-            date_posted: date_posted,
-            upvotes: upvotes,
-            downvotes: downvotes,
-            post_link: post_link,
-          },
-          product_information: {
-            referrer: referrer,
-            product_link: product_link,
-          },
-          user_information: {
-            username: username,
-            user_link: user_link,
-          },
-        });
+        if (
+          show_expired === true ||
+          (show_expired === false && expired === false)
+        ) {
+          bargains.push({
+            title: title,
+            description: description,
+            price: price,
+            item_code: item_code,
+            expired: expired,
+            post_information: {
+              date_posted: date_posted,
+              upvotes: upvotes,
+              downvotes: downvotes,
+              post_link: post_link,
+            },
+            product_information: {
+              referrer: referrer,
+              product_link: product_link,
+            },
+            user_information: {
+              username: username,
+              user_link: user_link,
+            },
+          });
+        }
       });
 
       let data = {
@@ -164,10 +168,10 @@ const categoryData = async (category_name, page) => {
       };
 
       if (previous_page_num) {
-        data.previous_page_url = `/category/${category_name}?page=${previous_page_num}`;
+        data.previous_page_url = `/category/${category_name}?show_expired=${show_expired}&page=${previous_page_num}`;
       }
       if (next_page_num) {
-        data.next_page_url = `/category/${category_name}?page=${next_page_num}`;
+        data.next_page_url = `/category/${category_name}?show_expired=${show_expired}&page=${next_page_num}`;
       }
 
       return JSON.stringify(data);
@@ -214,8 +218,7 @@ const searchData = async (query, page, show_expired) => {
 
       for (const [key, value] of resultMap.entries()) {
         const expired = $(key).find(".expired") ? true : false;
-        if (expired == true && show_expired == false)
-          break;
+        if (expired == true && show_expired == false) break;
         const title = $(key).find("a").text();
         const url = `https://www.ozbargain.com${$(key).find("a").attr("href")}`;
         const upvotes = $(key).find(".votes .voteup").text();
@@ -235,7 +238,7 @@ const searchData = async (query, page, show_expired) => {
         const date_posted = links
           .substring(links.lastIndexOf("deal"))
           .slice(13, 23);
-        
+
         results.push({
           title: title,
           expired: expired,
@@ -298,7 +301,8 @@ app.get("/bargain/:id", async (req, res) => {
 app.get("/category/:category", async (req, res) => {
   const category = req.params.category;
   const page = req.query.page;
-  const data = categoryData(category, page);
+  const show_expired = req.query.show_expired === "false" ? false : true;
+  const data = await categoryData(category, page, show_expired);
   res.json(JSON.parse(data));
 });
 
