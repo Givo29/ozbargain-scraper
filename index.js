@@ -30,7 +30,7 @@ const productData = async (node_id) => {
       // Getting general info
       const title = $("#title").text();
       const description = $(".node-ozbdeal .content > p").text();
-      const price = $("#title").find(".dollar").first().text();
+      const price = parseInt($("#title").find(".dollar").first().text().substring(1));
       const expired = $(".node-ozbdeal.expired").text() ? true : false;
 
       // Getting post information
